@@ -8,9 +8,6 @@ defmodule SipHash do
   alias SipHash.State, as: State
   alias SipHash.Util, as: Utils
 
-  # define the (constant) grouping pattern
-  @eighth_group_regex ~r/.{1,8}/
-
   @doc """
   Based on the algorithm as described in https://131002.net/siphash/siphash.pdf,
   and therefore requires a key alongside the input to use as a seed. This key
@@ -41,8 +38,11 @@ defmodule SipHash do
       iex> SipHash.hash("0123456789ABCDEF", "hello")
       "3D1974E948748CE2"
 
-      iex> SipHash.hash("0123456789ABCDEF", "this is a longer input")
-      "C7D6D8A1E7D359DD"
+      iex> SipHash.hash("0123456789ABCDEF", "abcdefgh")
+      "1AE57886F899E65F"
+
+      iex> SipHash.hash("0123456789ABCDEF", "my long strings")
+      "1323400B0804036D"
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", case: :lower)
       "3d1974e948748ce2"
@@ -67,45 +67,33 @@ defmodule SipHash do
       raise "Key must be exactly 16 bytes."
     end
 
-    length = byte_size(input)
-    remain = rem(length, 8)
     s_case = Keyword.get(opts, :case, :upper)
     c_pass = Keyword.get(opts, :c, 2)
     d_pass = Keyword.get(opts, :d, 4)
     l_pad  = Keyword.get(opts, :padding, false)
     state  = State.initialize(key)
-    chunks = Regex.scan(@eighth_group_regex, input)
-    last_m = Utils.apply_mask64(length <<< 56)
 
-    state =
-      chunks
-      |> Stream.map(&List.first/1)
-      |> Stream.take_while(&(byte_size(&1) == 8))
-      |> Enum.reduce(state, (&State.apply_block(&2, &1, c_pass)))
+    { len, m, state } =
+      input
+      |> :binary.bin_to_list
+      |> Enum.reduce({ 0, <<>>, state }, fn(byte, { len, m, state }) ->
+          len = len + 1
+          m = m <> <<byte>>
 
-    if remain > 0 do
-      { _, last_m } =
-        chunks
-        |> List.last
-        |> List.first
-        |> String.reverse
-        |> String.codepoints
-        |> Enum.reduce({ remain, last_m }, fn(point, acc) ->
-            { index, last_m } = acc
+          case rem(len, 8) do
+            0 ->
+              { len, <<>>, State.apply_block(state, m, c_pass) }
+            _ ->
+              { len, m, state }
+          end
+         end)
 
-            next_index  = index - 1
-            point_bytes = Utils.bytes_to_long(point)
-
-            right_side =
-              if remain >= index and index != 1 do
-                (point_bytes <<< (next_index * 8))
-              else
-                point_bytes
-              end
-
-            { next_index, (last_m ||| right_side) }
-           end)
+    last_block = case byte_size(m) do
+      7 -> m
+      l -> m <> :binary.copy(<<0>>, 7 - l)
     end
+
+    last_m = Utils.bytes_to_long(last_block <> <<len>>)
 
     state
     |> State.apply_block(last_m, c_pass)
@@ -123,21 +111,6 @@ defmodule SipHash do
 
       iex> SipHash.hash_r("hello", "0123456789ABCDEF")
       "3D1974E948748CE2"
-
-      iex> SipHash.hash_r("this is a longer input", "0123456789ABCDEF")
-      "C7D6D8A1E7D359DD"
-
-      iex> SipHash.hash_r("hello", "0123456789ABCDEF", case: :lower)
-      "3d1974e948748ce2"
-
-      iex> SipHash.hash_r("zymotechnics", "0123456789ABCDEF", padding: :true)
-      "09B57037CD3F8F0C"
-
-      iex> SipHash.hash_r("hello", "invalid_bytes")
-      ** (RuntimeError) Key must be exactly 16 bytes.
-
-      iex> SipHash.hash_r(%{ "test" => "one" }, "FEDCBA9876543210")
-      ** (FunctionClauseError) no function clause matching in SipHash.hash/3
 
   """
   @spec hash_r(binary, binary, [ { atom, atom } ]) :: binary
