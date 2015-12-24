@@ -18,7 +18,7 @@ defmodule SipHash.Mixfile do
         },
         maintainers: [ "Isaac Whitfield" ]
       },
-      version: "1.0.0",
+      version: "1.1.0",
       elixir: "~> 1.1",
       deps: deps,
       docs: [
@@ -53,12 +53,14 @@ defmodule SipHash.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      # benchmarking
+      { :benchfella,  "~> 0.3.0", optional: true, only: :dev },
       # documentation
       { :earmark, "~> 0.1",  optional: true, only: :docs },
       { :ex_doc,  "~> 0.10", optional: true, only: :docs },
       # testing
-      { :benchwarmer, "~> 0.0.2", only: :test },
-      { :excoveralls, "~> 0.4",   only: :test }
+      { :benchwarmer, "~> 0.0.2", optional: true, only: :test },
+      { :excoveralls, "~> 0.4",   optional: true, only: :test }
     ]
   end
 end

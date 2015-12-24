@@ -2,18 +2,15 @@ defmodule SipHash.State do
   use Bitwise
   @moduledoc """
   Module for representing state and state transformations of a digest
-  whilst moving through the hasing pipeline.
+  whilst moving through the hasing pipeline. Note that we use tuples
+  rather than structs due to a ~5 µs/op speedup.
   """
 
   # alias SipHash.Util for fast use
   alias SipHash.Util, as: Utils
 
-  # define a state struct of v0, v1, v2, v3
-  # as defined by the SipHash specifications
-  defstruct v0: nil, v1: nil, v2: nil, v3: nil
-
   # define types
-  @type s :: %SipHash.State { }
+  @type s :: { number, number, number, number }
 
   # magic 64 bit words
   @initial_v0 0x736f6d6570736575
@@ -29,14 +26,35 @@ defmodule SipHash.State do
   final state.
   """
   @spec apply_block(s, binary | number, number) :: s
-  def apply_block(%SipHash.State{ } = state, m, c) when is_binary(m) and is_number(c) do
+  def apply_block({ _v0, _v1, _v2, _v3 } = state, m, c)
+  when is_binary(m) and is_number(c) do
     apply_block(state, Utils.bytes_to_long(m), c)
   end
-  def apply_block(%SipHash.State{ } = state, m, c) when is_number(m) and is_number(c) do
-    state = %SipHash.State{ state | v3: state.v3 ^^^ m }
-    state = compress(state, c)
-    state = %SipHash.State{ state | v0: state.v0 ^^^ m }
-    state
+  def apply_block({ v0, v1, v2, v3 }, m, c) when is_number(m) and is_number(c) do
+    state = { v0, v1, v2, v3 ^^^ m }
+
+    { v0, v1, v2, v3 } =
+      state
+      |> compress(c)
+
+    { v0 ^^^ m, v1, v2, v3 }
+  end
+
+  @doc """
+  Applies a last-block transformation to the digest. This block may be less than
+  8-bytes, and if so we pad it left with zeroed bytes (up to 7 bytes). We then
+  add the length of the input as a byte and update using the block as normal.
+  """
+  @spec apply_last_block({ number, s, number } | s, number, number) :: s
+  def apply_last_block({ m, state, c_len }, len, c_pass) do
+    last_block = case c_len do
+      7 -> m
+      l -> m <> :binary.copy(<<0>>, 7 - l)
+    end
+    apply_block(state, (last_block <> <<len>>), c_pass)
+  end
+  def apply_last_block({ _v0, _v1, _v2, _v3 } = state, len, c_pass) do
+    apply_last_block({ <<>>, state, 0 }, len, c_pass)
   end
 
   @doc """
@@ -44,10 +62,10 @@ defmodule SipHash.State do
   modify the c-d values of the SipHash algorithm.
   """
   @spec compress(s, number) :: s
-  def compress(%SipHash.State{ } = state, n) when n > 0 do
+  def compress({ _v0, _v1, _v2, _v3 } = state, n) when n > 0 do
     state |> compress |> compress(n - 1)
   end
-  def compress(%SipHash.State{ } = state, 0), do: state
+  def compress({ _v0, _v1, _v2, _v3 } = state, 0), do: state
 
   @doc """
   Performs the equivalent of SipRound on the provided state, making sure to mask
@@ -58,7 +76,7 @@ defmodule SipHash.State do
   `SipHash.State.round/1` to avoid clashing with `Kernel.round/1` internally.
   """
   @spec compress(s) :: s
-  def compress(%SipHash.State{ v0: v0, v1: v1, v2: v2, v3: v3 }) do
+  def compress({ v0, v1, v2, v3 }) do
     v0 = Utils.apply_mask64(v0 + v1)
     v2 = Utils.apply_mask64(v2 + v3)
     v1 = rotate_left(v1, 13);
@@ -77,7 +95,7 @@ defmodule SipHash.State do
     v3 = v3 ^^^ v0
     v2 = rotate_left(v2, 32);
 
-    %SipHash.State{ v0: v0, v1: v1, v2: v2, v3: v3 }
+    { v0, v1, v2, v3 }
   end
 
   @doc """
@@ -85,10 +103,14 @@ defmodule SipHash.State do
   rotation, all properties of the state are XOR'd from left to right.
   """
   @spec finalize(s, number) :: s
-  def finalize(%SipHash.State{ } = state, d) when is_number(d) do
-    %SipHash.State{ state | v2: state.v2 ^^^ 0xff }
-     |> compress(d)
-     |> (&(&1.v0 ^^^ &1.v1 ^^^ &1.v2 ^^^ &1.v3)).()
+  def finalize({ v0, v1, v2, v3 }, d) when is_number(d) do
+    state = { v0, v1, v2 ^^^ 0xff, v3 }
+
+    { v0, v1, v2, v3 } =
+      state
+      |> compress(d)
+
+    (v0 ^^^ v1 ^^^ v2 ^^^ v3)
   end
 
   @doc """
@@ -99,17 +121,16 @@ defmodule SipHash.State do
   """
   @spec initialize(binary) :: s
   def initialize(key) when is_binary(key) do
-    [k0,k1] =
-      key
-      |> String.split_at(8)
-      |> Tuple.to_list
-      |> Enum.map(&Utils.bytes_to_long/1)
+    { a, b } = :erlang.split_binary(key, 8)
 
-    %SipHash.State{
-      v0: @initial_v0 ^^^ k0,
-      v1: @initial_v1 ^^^ k1,
-      v2: @initial_v2 ^^^ k0,
-      v3: @initial_v3 ^^^ k1
+    k0 = Utils.bytes_to_long(a)
+    k1 = Utils.bytes_to_long(b)
+
+    {
+      @initial_v0 ^^^ k0,
+      @initial_v1 ^^^ k1,
+      @initial_v2 ^^^ k0,
+      @initial_v3 ^^^ k1
     }
   end
 

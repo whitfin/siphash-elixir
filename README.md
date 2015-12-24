@@ -3,6 +3,10 @@
 
 An Elixir implementation of the SipHash cryptographic hash family. Supports any variation, although defaults to SipHash-2-4. Current implementation aims to be functional with a focus on correctness; future versions will focus more on speed.
 
+## Notes From v1.1
+
+With a few minor changes to how hashing is done, v1.1 is ~60% faster than the initial v1 implementation. Unfortunately, it looks unlikely that it will be possible to speed it up further; it appears the current wall is simply that of Elixir.
+
 ## Installation
 
 This package can be installed via Hex:
@@ -10,7 +14,7 @@ This package can be installed via Hex:
   1. Add siphash to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:siphash, "~> 1.0.0"}]
+          [{:siphash, "~> 1.1.0"}]
         end
 
   2. Ensure siphash is started before your application:

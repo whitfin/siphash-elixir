@@ -67,36 +67,24 @@ defmodule SipHash do
       raise "Key must be exactly 16 bytes."
     end
 
+    in_len = byte_size(input)
     s_case = Keyword.get(opts, :case, :upper)
     c_pass = Keyword.get(opts, :c, 2)
     d_pass = Keyword.get(opts, :d, 4)
     l_pad  = Keyword.get(opts, :padding, false)
     state  = State.initialize(key)
 
-    { len, m, state } =
-      input
-      |> :binary.bin_to_list
-      |> Enum.reduce({ 0, <<>>, state }, fn(byte, { len, m, state }) ->
-          len = len + 1
-          m = m <> <<byte>>
-
-          case rem(len, 8) do
-            0 ->
-              { len, <<>>, State.apply_block(state, m, c_pass) }
-            _ ->
-              { len, m, state }
-          end
-         end)
-
-    last_block = case byte_size(m) do
-      7 -> m
-      l -> m <> :binary.copy(<<0>>, 7 - l)
-    end
-
-    last_m = Utils.bytes_to_long(last_block <> <<len>>)
-
-    state
-    |> State.apply_block(last_m, c_pass)
+    input
+    |> Utils.chunk_string(8)
+    |> Enum.reduce(state, fn(chunk, state) ->
+        case byte_size(chunk) do
+          8 ->
+            State.apply_block(state, chunk, c_pass)
+          l ->
+            { chunk, state, l }
+        end
+       end)
+    |> State.apply_last_block(in_len, c_pass)
     |> State.finalize(d_pass)
     |> Integer.to_string(16)
     |> (&(if s_case == :upper, do: &1, else: String.downcase(&1))).()

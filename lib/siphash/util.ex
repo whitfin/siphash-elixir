@@ -46,4 +46,22 @@ defmodule SipHash.Util do
     :binary.decode_unsigned(input, :little)
   end
 
+  @doc """
+  Chunks a binary input into groups of N, where N is passed in. If a group does
+  not have enough chars to be chunked again, it will be added to the list as is.
+
+  ## Examples
+
+      iex> SipHash.Util.chunk_string("12345678", 4)
+      ["1234","5678"]
+
+  """
+  @spec chunk_string(binary, number) :: list
+  def chunk_string(str, n) when byte_size(str) >= n do
+    { chunk, rest } = :erlang.split_binary(str, n)
+    [chunk|chunk_string(rest, n)]
+  end
+  def chunk_string(<<>>, _), do: []
+  def chunk_string(str, _), do: [str]
+
 end
