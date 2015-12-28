@@ -85,12 +85,12 @@ defmodule SipHash do
     end
 
     in_len = byte_size(input)
-
     s_case = :upper
     c_pass = 2
     d_pass = 4
     to_hex = false
     l_pad  = false
+    state  = State.initialize(key)
 
     case opts do
       [] -> ;
@@ -101,8 +101,6 @@ defmodule SipHash do
         to_hex = Keyword.get(opts, :hex, to_hex)
         l_pad  = Keyword.get(opts, :padding, l_pad)
     end
-
-    state = SipHash.State.initialize(key)
 
     input
     |> Util.chunk_string(8)
