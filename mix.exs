@@ -11,7 +11,14 @@ defmodule SipHash.Mixfile do
       description: "Elixir implementation of the SipHash hash family",
       compilers: [ :make, :elixir, :app ],
       package: %{
-        files: [ "c_src", "lib", "mix.exs", "LICENSE", "README.md" ],
+        files: [
+          "c_src",
+          "lib",
+          "mix.exs",
+          "LICENSE",
+          "Makefile",
+          "README.md"
+          ],
         licenses: [ "MIT" ],
         links: %{
           "Docs" => @url_docs,
