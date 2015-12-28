@@ -9,8 +9,9 @@ defmodule SipHash.Mixfile do
       app: :siphash,
       name: "SipHash",
       description: "Elixir implementation of the SipHash hash family",
+      compilers: [ :make, :elixir, :app ],
       package: %{
-        files: [ "LICENSE", "mix.exs", "README.md", "lib" ],
+        files: [ "c_src", "lib", "mix.exs", "LICENSE", "README.md" ],
         licenses: [ "MIT" ],
         links: %{
           "Docs" => @url_docs,
@@ -20,6 +21,9 @@ defmodule SipHash.Mixfile do
       },
       version: "1.1.0",
       elixir: "~> 1.1",
+      aliases: [
+        clean: [ "clean", "clean.make" ]
+      ],
       deps: deps,
       docs: [
         extras: [ "README.md" ],
@@ -53,14 +57,28 @@ defmodule SipHash.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      # benchmarking
-      { :benchfella,  "~> 0.3.0", optional: true, only: :dev },
       # documentation
       { :earmark, "~> 0.1",  optional: true, only: :docs },
-      { :ex_doc,  "~> 0.10", optional: true, only: :docs },
+      { :ex_doc,  "~> 0.11", optional: true, only: :docs },
       # testing
+      { :benchfella,  "~> 0.3.0", optional: true, only: :test },
       { :benchwarmer, "~> 0.0.2", optional: true, only: :test },
-      { :excoveralls, "~> 0.4",   optional: true, only: :test }
+      { :excoveralls, "~> 0.4",   optional: true, only: :test },
+      { :exprof,      "~> 0.2.0", optional: true, only: :test }
     ]
+  end
+end
+
+# Custom clean for C source
+defmodule Mix.Tasks.Clean.Make do
+  def run(_) do
+    { _result, 0 } = System.cmd("make", ["clean"], stderr_to_stdout: true)
+  end
+end
+
+# Custom compile for C source
+defmodule Mix.Tasks.Compile.Make do
+  def run(_) do
+    { _result, 0 } = System.cmd("make", [], stderr_to_stdout: true)
   end
 end

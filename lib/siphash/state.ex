@@ -3,11 +3,12 @@ defmodule SipHash.State do
   @moduledoc """
   Module for representing state and state transformations of a digest
   whilst moving through the hasing pipeline. Note that we use tuples
-  rather than structs due to a ~5 µs/op speedup.
+  rather than structs due to a ~5 µs/op speedup. This module makes use
+  of NIFs to improve performance.
   """
 
   # alias SipHash.Util for fast use
-  alias SipHash.Util, as: Utils
+  alias SipHash.Util, as: Util
 
   # define types
   @type s :: { number, number, number, number }
@@ -17,6 +18,32 @@ defmodule SipHash.State do
   @initial_v1 0x646f72616e646f6d
   @initial_v2 0x6c7967656e657261
   @initial_v3 0x7465646279746573
+
+  # define native implementation
+  @native_impl [".", "_native", "native_impl"] |> Path.join |> Path.expand
+
+  # setup init load
+  @on_load :initialize
+
+  @doc """
+  Loads any NIFs needed for this module, logging out a message depending on
+  whether the load was successful or not. Because we have a valid fallback
+  implementation, we don't have to exit on failure.
+  """
+  def initialize do
+    case System.get_env("HASH_IMPL") do
+      "embedded" ->
+        Logger.bare_log(:debug, "Loaded embedded compression.")
+      _other ->
+        case :erlang.load_nif(@native_impl, 0) do
+          :ok ->
+            Logger.bare_log(:debug, "Loaded native compression.")
+          err ->
+            log_msg = "Unable to load native compression! Using embedded instead."
+            Logger.bare_log(:warn, log_msg <> "\n" <> inspect(err))
+        end
+    end
+  end
 
   @doc """
   Applies a block (an 8-byte chunk) to the digest, and returns the state after
@@ -28,7 +55,7 @@ defmodule SipHash.State do
   @spec apply_block(s, binary | number, number) :: s
   def apply_block({ _v0, _v1, _v2, _v3 } = state, m, c)
   when is_binary(m) and is_number(c) do
-    apply_block(state, Utils.bytes_to_long(m), c)
+    apply_block(state, Util.bytes_to_long(m), c)
   end
   def apply_block({ v0, v1, v2, v3 }, m, c) when is_number(m) and is_number(c) do
     state = { v0, v1, v2, v3 ^^^ m }
@@ -74,11 +101,15 @@ defmodule SipHash.State do
 
   Incidentally, this function is named `SipHash.State.compress/1` rather than
   `SipHash.State.round/1` to avoid clashing with `Kernel.round/1` internally.
+
+  As of v2.0.0, this function is overridden with a native implementation when
+  available in order to speed up the translations. This results in a ~10 µs/op
+  speed decrease, and so this should be treated as a fallback state only.
   """
   @spec compress(s) :: s
   def compress({ v0, v1, v2, v3 }) do
-    v0 = Utils.apply_mask64(v0 + v1)
-    v2 = Utils.apply_mask64(v2 + v3)
+    v0 = Util.apply_mask64(v0 + v1)
+    v2 = Util.apply_mask64(v2 + v3)
     v1 = rotate_left(v1, 13);
     v3 = rotate_left(v3, 16);
 
@@ -86,8 +117,8 @@ defmodule SipHash.State do
     v3 = v3 ^^^ v2
     v0 = rotate_left(v0, 32);
 
-    v2 = Utils.apply_mask64(v2 + v1)
-    v0 = Utils.apply_mask64(v0 + v3)
+    v2 = Util.apply_mask64(v2 + v1)
+    v0 = Util.apply_mask64(v0 + v3)
     v1 = rotate_left(v1, 17);
     v3 = rotate_left(v3, 21);
 
@@ -123,8 +154,8 @@ defmodule SipHash.State do
   def initialize(key) when is_binary(key) do
     { a, b } = :erlang.split_binary(key, 8)
 
-    k0 = Utils.bytes_to_long(a)
-    k1 = Utils.bytes_to_long(b)
+    k0 = Util.bytes_to_long(a)
+    k1 = Util.bytes_to_long(b)
 
     {
       @initial_v0 ^^^ k0,
@@ -150,7 +181,7 @@ defmodule SipHash.State do
   """
   @spec rotate_left(number, number) :: number
   def rotate_left(val, shift) when is_number(val) and is_number(shift) do
-    Utils.apply_mask64(val <<< shift) ||| (val >>> (64 - shift))
+    Util.apply_mask64(val <<< shift) ||| (val >>> (64 - shift))
   end
 
 end

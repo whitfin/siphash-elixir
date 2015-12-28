@@ -64,4 +64,61 @@ defmodule SipHash.Util do
   def chunk_string(<<>>, _), do: []
   def chunk_string(str, _), do: [str]
 
+  @doc """
+  Pads a binary input with zeroes. This only occurs when the second argument
+  is `true`, otherwise there's a short-circuit to return the input as is. This
+  is due to the options being passed to `SipHash.hash/3` being the primary use
+  case here. If the provided input is not a binary, simply return the value
+  passed in.
+
+  ## Examples
+
+      iex> SipHash.Util.pad_left("12345678", true)
+      "0000000012345678"
+
+      iex> SipHash.Util.pad_left("12345678", false)
+      "12345678"
+
+      iex> SipHash.Util.pad_left(12345678, false)
+      12345678
+
+  """
+  @spec pad_left(binary, true | false) :: binary
+  def pad_left(s, _) when not is_binary(s), do: s
+  def pad_left(s, false), do: s
+  def pad_left(s, true), do: String.rjust(s, 16, ?0)
+
+  @doc """
+  Converts a binary input to the provided case, short circuiting if the input
+  is already in the correct case (specified in the third parameter). If the
+  provided input is not a binary, simply return the value passed in.
+
+  ## Examples
+
+      iex> SipHash.Util.to_case("test", :lower, :lower)
+      "test"
+
+      iex> SipHash.Util.to_case("test", :upper, :lower)
+      "TEST"
+
+      iex> SipHash.Util.to_case("TEST", :lower, :upper)
+      "test"
+
+      iex> SipHash.Util.to_case("TEST", :upper, :upper)
+      "TEST"
+
+      iex> SipHash.Util.to_case(5, :upper, :upper)
+      5
+
+  """
+  @spec to_case(binary, atom, atom) :: binary
+  def to_case(s, _, _) when not is_binary(s), do: s
+  def to_case(s, t, t), do: s
+  def to_case(s, :lower, _), do: String.downcase(s)
+  def to_case(s, :upper, _), do: String.upcase(s)
+
+  @spec to_hex(number, true | false) :: binary
+  def to_hex(s, false), do: s
+  def to_hex(s, true), do: Integer.to_string(s, 16)
+
 end
