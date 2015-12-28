@@ -23,14 +23,14 @@ defmodule SipHash.State do
   @native_impl [".", "_native", "native_impl"] |> Path.join |> Path.expand
 
   # setup init load
-  @on_load :initialize
+  @on_load :init
 
   @doc """
   Loads any NIFs needed for this module, logging out a message depending on
   whether the load was successful or not. Because we have a valid fallback
   implementation, we don't have to exit on failure.
   """
-  def initialize do
+  def init do
     case System.get_env("HASH_IMPL") do
       "embedded" ->
         Logger.bare_log(:debug, "Loaded embedded compression.")
