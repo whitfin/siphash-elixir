@@ -37,12 +37,12 @@ static ERL_NIF_TERM apply_block(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv
   enif_get_ulong(env, tuple[3], &v3);
   enif_get_ulong(env, argv[1], &m);
 
-  int c;
+  int c, i;
 
   enif_get_int(env, argv[2], &c);
 
   v3 ^= m;
-  for(int i = 0; i < c; i++){
+  for(i = 0; i < c; i++){
     COMPRESS
   }
   v0 ^= m;
@@ -72,12 +72,12 @@ static ERL_NIF_TERM finalize(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[])
   enif_get_ulong(env, tuple[2], &v2);
   enif_get_ulong(env, tuple[3], &v3);
 
-  int d;
+  int d, i;
 
   enif_get_int(env, argv[1], &d);
 
   v2 ^= 0xff;
-  for(int i = 0; i < d; i++){
+  for(i = 0; i < d; i++){
     COMPRESS
   }
 
