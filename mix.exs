@@ -18,7 +18,7 @@ defmodule SipHash.Mixfile do
           "LICENSE",
           "Makefile",
           "README.md"
-          ],
+        ],
         licenses: [ "MIT" ],
         links: %{
           "Docs" => @url_docs,

@@ -9,6 +9,10 @@ defmodule SipHash do
   the NIFs are automatically loaded during the start of the application. Please
   note that the use of NIFs brings a significant performance improvement, and so
   you should only disable them with good reason.
+
+  Due to the use of NIFs, please only use the public `SipHash` functions. Do not
+  rely on the behaviour of any submodules, as incorrect use of native functions
+  can result in crashes in your application.
   """
 
   # alias both SipHash.State/Util
@@ -89,7 +93,6 @@ defmodule SipHash do
     c_pass = 2
     d_pass = 4
     to_hex = false
-    l_pad  = false
     state  = State.initialize(key)
 
     case opts do
@@ -99,7 +102,6 @@ defmodule SipHash do
         c_pass = Keyword.get(opts, :c, c_pass)
         d_pass = Keyword.get(opts, :d, d_pass)
         to_hex = Keyword.get(opts, :hex, to_hex)
-        l_pad  = Keyword.get(opts, :padding, l_pad)
     end
 
     input
@@ -114,9 +116,7 @@ defmodule SipHash do
        end)
     |> State.apply_last_block(in_len, c_pass)
     |> State.finalize(d_pass)
-    |> Util.to_hex(to_hex)
-    |> Util.to_case(s_case, :upper)
-    |> Util.pad_left(l_pad)
+    |> Util.format(to_hex, s_case)
   end
 
   @doc """

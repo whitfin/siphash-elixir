@@ -4,7 +4,7 @@ elixir:
 otp_release:
   - 18.0
 script:
-  - HASH_IMPL=native mix test --trace
-  - HASH_IMPL=embedded mix test --trace
+  - STATE_IMPL=native UTIL_IMPL=native mix test --trace
+  - STATE_IMPL=embedded UTIL_IMPL=embedded mix test --trace
 after_success:
-  - HASH_IMPL=embedded MIX_ENV=test mix coveralls.travis
+  - STATE_IMPL=embedded UTIL_IMPL=embedded MIX_ENV=test mix coveralls.travis

@@ -20,7 +20,7 @@ defmodule SipHash.State do
   @initial_v3 0x7465646279746573
 
   # define native implementation
-  @native_impl [".", "_native", "native_impl"] |> Path.join |> Path.expand
+  @native_impl [".", "_native", "state"] |> Path.join |> Path.expand
 
   # setup init load
   @on_load :init
@@ -31,33 +31,28 @@ defmodule SipHash.State do
   implementation, we don't have to exit on failure.
   """
   def init do
-    case System.get_env("HASH_IMPL") do
-      "embedded" ->
-        Logger.bare_log(:debug, "Loaded embedded compression.")
-      _other ->
-        case :erlang.load_nif(@native_impl, 0) do
-          :ok ->
-            Logger.bare_log(:debug, "Loaded native compression.")
-          err ->
-            log_msg = "Unable to load native compression! Using embedded instead."
-            Logger.bare_log(:warn, log_msg <> "\n" <> inspect(err))
-        end
+    case System.get_env("STATE_IMPL") do
+      "embedded" -> :ok;
+      _other -> :erlang.load_nif(@native_impl, 0)
     end
   end
 
   @doc """
   Applies a block (an 8-byte chunk) to the digest, and returns the state after
-  transformation. If a binary chunk is passed in, it's converted to a number (as
-  little endian) before being passed to the main body. First we XOR v3 before
-  compressing the state twice. Once complete, we then XOR v0, and return the
-  final state.
+  transformation. A binary chunk is passed in, and then it is converted to a
+  number (as little endian) before being passed to the internal function
+  `SipHash.State.apply_internal_block/3`.
   """
-  @spec apply_block(s, binary | number, number) :: s
+  @spec apply_block(s, binary, number) :: s
   def apply_block({ _v0, _v1, _v2, _v3 } = state, m, c)
   when is_binary(m) and is_number(c) do
-    apply_block(state, Util.bytes_to_long(m), c)
+    apply_internal_block(state, Util.bytes_to_long(m), c)
   end
-  def apply_block({ v0, v1, v2, v3 }, m, c) when is_number(m) and is_number(c) do
+
+  # Applies a block to the digest, and returns the state after transformation.
+  # First we XOR v3 before compressing the state twice. Once it's complete, we
+  # then XOR v0, and return the final state.
+  defp apply_internal_block({ v0, v1, v2, v3 }, m, c) do
     state = { v0, v1, v2, v3 ^^^ m }
 
     { v0, v1, v2, v3 } =

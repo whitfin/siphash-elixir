@@ -9,9 +9,10 @@ ifneq ($(OS),Windows_NT)
 	endif
 endif
 
-_native/native_impl.so: clean
+_native: clean
 	mkdir -p _native
-	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@ c_src/native_impl.c
+	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@/state.so c_src/state.c
+	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@/util.so c_src/util.c
 
 clean:
 	$(RM) -r _native/*
