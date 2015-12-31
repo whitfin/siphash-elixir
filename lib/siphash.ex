@@ -49,7 +49,6 @@ defmodule SipHash do
     * `:case` - either of `:upper` or `:lower`, defaults to using `:upper`
     * `:c` and `:d` - the number of compression rounds, default to `2` and `4`
     * `:hex` - when `true` returns the output as a hex string
-    * `:padding` - when `true`, pads left with zeroes to 16 chars as necessary
 
   ## Examples
 
@@ -67,9 +66,6 @@ defmodule SipHash do
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", hex: true, case: :lower)
       "3d1974e948748ce2"
-
-      iex> SipHash.hash("0123456789ABCDEF", "zymotechnics", hex: true, padding: :true)
-      "09B57037CD3F8F0C"
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", c: 4, d: 8)
       14986662229302055855
