@@ -26,8 +26,7 @@ defmodule SipHash.State do
   @on_load :init
 
   @doc """
-  Loads any NIFs needed for this module, logging out a message depending on
-  whether the load was successful or not. Because we have a valid fallback
+  Loads any NIFs needed for this module. Because we have a valid fallback
   implementation, we don't have to exit on failure.
   """
   def init do
@@ -159,6 +158,13 @@ defmodule SipHash.State do
       @initial_v3 ^^^ k1
     }
   end
+
+  @doc """
+  Used to quickly determine if NIFs have been loaded for this module. Returns
+  `true` if it has, `false` if it hasn't.
+  """
+  @spec nif_loaded :: true | false
+  def nif_loaded, do: false
 
   @doc """
   Rotates an input number `val` left by `shift` number of bits. Bits which are

@@ -1,6 +1,6 @@
-#include "erl_nif.h"
+#include "nif.h"
 
-static ERL_NIF_TERM format(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[]) {
+NIF(format){
   unsigned long n;
   ErlNifBinary f, r;
 
@@ -14,11 +14,8 @@ static ERL_NIF_TERM format(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[]) {
 }
 
 static ErlNifFunc nif_funcs[] = {
-  { "format", 2, format }
+  { "format", 2, format },
+  { "nif_loaded", 0, nif_loaded }
 };
-
-static int upgrade(ErlNifEnv* env, void** new, void** old, ERL_NIF_TERM info){
-  return 0;
-}
 
 ERL_NIF_INIT(Elixir.SipHash.Util,nif_funcs,NULL,NULL,upgrade,NULL)

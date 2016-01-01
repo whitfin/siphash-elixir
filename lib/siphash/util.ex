@@ -14,8 +14,7 @@ defmodule SipHash.Util do
   @on_load :init
 
   @doc """
-  Loads any NIFs needed for this module, logging out a message depending on
-  whether the load was successful or not. Because we have a valid fallback
+  Loads any NIFs needed for this module. Because we have a valid fallback
   implementation, we don't have to exit on failure.
   """
   def init do
@@ -116,6 +115,13 @@ defmodule SipHash.Util do
     |> to_case(:lower)
     |> pad_left
   end
+
+  @doc """
+  Used to quickly determine if NIFs have been loaded for this module. Returns
+  `true` if it has, `false` if it hasn't.
+  """
+  @spec nif_loaded :: true | false
+  def nif_loaded, do: false
 
   @doc """
   Pads a binary input with zeroes. If the provided input is not a binary, simply

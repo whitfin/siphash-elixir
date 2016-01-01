@@ -1,4 +1,4 @@
-#include "erl_nif.h"
+#include "nif.h"
 #include <inttypes.h>
 
 #define ROTATE_LEFT(x, b) (unsigned long)(((x) << (b)) | ((x) >> (64 - (b))))
@@ -19,7 +19,7 @@
   v3 ^= v0;                     \
   v2 = ROTATE_LEFT(v2, 32);
 
-static ERL_NIF_TERM apply_block(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[]) {
+NIF(apply_block){
   int arity;
   const ERL_NIF_TERM** tuple;
 
@@ -56,7 +56,7 @@ static ERL_NIF_TERM apply_block(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv
   );
 }
 
-static ERL_NIF_TERM finalize(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[]) {
+NIF(finalize){
   int arity;
   const ERL_NIF_TERM** tuple;
 
@@ -86,11 +86,8 @@ static ERL_NIF_TERM finalize(ErlNifEnv* env, int arc, const ERL_NIF_TERM argv[])
 
 static ErlNifFunc nif_funcs[] = {
   { "apply_internal_block", 3, apply_block },
-  { "finalize", 2, finalize }
+  { "finalize", 2, finalize },
+  { "nif_loaded", 0, nif_loaded }
 };
-
-static int upgrade(ErlNifEnv* env, void** new, void** old, ERL_NIF_TERM info){
-  return 0;
-}
 
 ERL_NIF_INIT(Elixir.SipHash.State,nif_funcs,NULL,NULL,upgrade,NULL)
