@@ -67,15 +67,12 @@ defmodule SipHash.State do
   add the length of the input as a byte and update using the block as normal.
   """
   @spec apply_last_block({ number, s, number } | s, number, number) :: s
-  def apply_last_block({ m, state, c_len }, len, c_pass) do
-    last_block = case c_len do
+  def apply_last_block({ m, state, chunk_length }, len, c) do
+    last_block = case chunk_length do
       7 -> m
       l -> m <> :binary.copy(<<0>>, 7 - l)
     end
-    apply_block(state, (last_block <> <<len>>), c_pass)
-  end
-  def apply_last_block({ _v0, _v1, _v2, _v3 } = state, len, c_pass) do
-    apply_last_block({ <<>>, state, 0 }, len, c_pass)
+    apply_block(state, (last_block <> <<len>>), c)
   end
 
   @doc """
@@ -83,8 +80,8 @@ defmodule SipHash.State do
   modify the c-d values of the SipHash algorithm.
   """
   @spec compress(s, number) :: s
-  def compress({ _v0, _v1, _v2, _v3 } = state, n) when n > 0 do
-    state |> compress |> compress(n - 1)
+  def compress({ _v0, _v1, _v2, _v3 } = state, iter) when iter > 0 do
+    state |> compress |> compress(iter - 1)
   end
   def compress({ _v0, _v1, _v2, _v3 } = state, 0), do: state
 
@@ -101,7 +98,7 @@ defmodule SipHash.State do
   speed decrease, and so this should be treated as a fallback state only.
   """
   @spec compress(s) :: s
-  def compress({ v0, v1, v2, v3 }) do
+  def compress({ v0, v1, v2, v3 } = _state) do
     v0 = Util.apply_mask64(v0 + v1)
     v2 = Util.apply_mask64(v2 + v3)
     v1 = rotate_left(v1, 13);
@@ -128,7 +125,7 @@ defmodule SipHash.State do
   rotation, all properties of the state are XOR'd from left to right.
   """
   @spec finalize(s, number) :: s
-  def finalize({ v0, v1, v2, v3 }, d) when is_number(d) do
+  def finalize({ v0, v1, v2, v3 } = _state, d) when is_number(d) do
     state = { v0, v1, v2 ^^^ 0xff, v3 }
 
     { v0, v1, v2, v3 } =
@@ -143,6 +140,13 @@ defmodule SipHash.State do
   the SipHash specifications. First we take the input key, split it in two,
   and convert to the little endian version of the bytes. We then create a struct
   using the magic numbers and XOR them against the two key words created.
+
+  ## Examples
+
+      iex> SipHash.init("0123456789ABCDEF")
+      {4925064773550298181, 2461839666708829781, 6579568090023412561,
+       3611922228250500171}
+
   """
   @spec initialize(binary) :: s
   def initialize(key) when is_binary(key) do
@@ -162,9 +166,19 @@ defmodule SipHash.State do
   @doc """
   Used to quickly determine if NIFs have been loaded for this module. Returns
   `true` if it has, `false` if it hasn't.
+
+  ## Examples
+
+      iex> res = case System.get_env("STATE_IMPL") do
+      ...>   "embedded" -> false
+      ...>   _other -> true
+      ...> end
+      iex> SipHash.State.nif_loaded? == res
+      true
+
   """
-  @spec nif_loaded :: true | false
-  def nif_loaded, do: false
+  @spec nif_loaded? :: true | false
+  def nif_loaded?, do: false
 
   @doc """
   Rotates an input number `val` left by `shift` number of bits. Bits which are

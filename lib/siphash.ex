@@ -19,19 +19,28 @@ defmodule SipHash do
   alias SipHash.State, as: State
   alias SipHash.Util, as: Util
 
+  # store key error message
+  @kerr "Key must be exactly 16 bytes!"
+
   # define types
   @type s :: { number, number, number, number }
 
   @doc """
   Based on the algorithm as described in https://131002.net/siphash/siphash.pdf,
   and therefore requires a key alongside the input to use as a seed. This key
-  is required to be 16 bytes, and is measured by `Kernel.byte_size/1`. An error
+  should consist of 16 bytes, and is measured by `Kernel.byte_size/1`. An error
   will be raised if this is not the case. The default implementation is a 2-4
   hash, but this can be controlled through the options provided.
 
+  In the interest of performance; if you're repeatedly using the same key it's
+  possible to create an initial state from your key once, thus avoiding wasted
+  key calculations. This can be created by calling `SipHash.init/1` with your
+  key. The returned state can be provided instead of a key when hashing; this
+  shaves roughly ~0.5 µs/op, so it's recommended to use this method when possible.
+
   Your input *must* be a binary. It's possible to add a catch-all to `SipHash.hash/3`
   which simply wraps the input in `Kernel.inspect/2`, but such usage is not
-  encourage. It's better to be more explicit about what is being hashed, and
+  encouraged. It's better to be more explicit about what is being hashed, and
   `Kernel.inspect/2` does not always perform the fastest available conversion
   (for example, using Poison to encode Maps is far faster, whilst also being more
   reliable). In addition, the output of `Kernel.inspect/2` is specific to Elixir,
@@ -48,11 +57,14 @@ defmodule SipHash do
 
     * `:case` - either of `:upper` or `:lower`, defaults to using `:upper`
     * `:c` and `:d` - the number of compression rounds, default to `2` and `4`
-    * `:hex` - when `true` returns the output as a hex string
+    * `:hex` - when `true` returns the output as a hex string, defaults to `false`
 
   ## Examples
 
       iex> SipHash.hash("0123456789ABCDEF", "hello")
+      4402678656023170274
+
+      iex> SipHash.init("0123456789ABCDEF") |> SipHash.hash("hello")
       4402678656023170274
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", hex: true)
@@ -71,61 +83,64 @@ defmodule SipHash do
       14986662229302055855
 
       iex> SipHash.hash("invalid_bytes", "hello")
-      ** (RuntimeError) Key must be exactly 16 bytes.
+      ** (RuntimeError) Key must be exactly 16 bytes!
 
       iex> SipHash.hash("FEDCBA9876543210", %{ "test" => "one" })
       ** (FunctionClauseError) no function clause matching in SipHash.hash/3
 
   """
-  @spec hash(binary, binary, [ { atom, atom } ]) :: binary
-  def hash(key, input, opts \\ [])
-  when is_binary(key) and is_binary(input) and is_list(opts) do
-    if byte_size(key) != 16 do
-      raise "Key must be exactly 16 bytes."
-    end
-
-    in_len = byte_size(input)
+  @spec hash(binary | s, binary, [ { atom, atom } ]) :: binary
+  def hash({ _v0, _v1, _v2, _v3 } = state, input, opts)
+  when is_binary(input) and is_list(opts) do
+    length = byte_size(input)
     s_case = :upper
     c_pass = 2
     d_pass = 4
     to_hex = false
-    state  = State.initialize(key)
 
-    case opts do
-      [] -> ;
-      [_h|_t] ->
-        s_case = Keyword.get(opts, :case, s_case)
-        c_pass = Keyword.get(opts, :c, c_pass)
-        d_pass = Keyword.get(opts, :d, d_pass)
-        to_hex = Keyword.get(opts, :hex, to_hex)
+    unless Enum.empty?(opts) do
+      s_case = Keyword.get(opts, :case, s_case)
+      c_pass = Keyword.get(opts, :c, c_pass)
+      d_pass = Keyword.get(opts, :d, d_pass)
+      to_hex = Keyword.get(opts, :hex, to_hex)
     end
 
     input
-    |> Util.chunk_string(8)
-    |> Enum.reduce(state, fn(chunk, state) ->
+    |> Util.process_by_chunk(8, state, fn(state, chunk) ->
         case byte_size(chunk) do
-          8 ->
-            State.apply_block(state, chunk, c_pass)
-          l ->
-            { chunk, state, l }
+          8 -> State.apply_block(state, chunk, c_pass)
+          l -> State.apply_last_block({ chunk, state, l }, length, c_pass)
         end
        end)
-    |> State.apply_last_block(in_len, c_pass)
     |> State.finalize(d_pass)
     |> Util.format(to_hex, s_case)
   end
+  def hash(key, input, opts) when byte_size(key) == 16 do
+    key
+    |> State.initialize
+    |> hash(input, opts)
+  end
+  def hash(key, _input, _opts) when is_binary(key), do: raise @kerr
+  def hash(key, input), do: hash(key, input, [])
 
   @doc """
-  Wrapper around `SipHash.hash/3` to rotate the arguments, allowing for more
-  convenient usage when creating a pipeline (you can rotate key/input as needed).
+  Takes an initial seed key and creates a state with the initial values for
+  v0, v1, v2 and v3. This state can then be provided to `SipHash.hash/3` to
+  avoid repeatedly recalculating this step when using the same key for every
+  hash.
 
   ## Examples
 
-      iex> SipHash.hash_r("hello", "0123456789ABCDEF")
-      4402678656023170274
+      iex> SipHash.init("0123456789ABCDEF")
+      {4925064773550298181, 2461839666708829781, 6579568090023412561,
+       3611922228250500171}
+
+      iex> SipHash.init("invalid")
+      ** (RuntimeError) Key must be exactly 16 bytes!
 
   """
-  @spec hash_r(binary, binary | s, [ { atom, atom } ]) :: binary
-  def hash_r(input, key_or_state, opts \\ []), do: hash(key_or_state, input, opts)
+  @spec init(binary) :: s
+  def init(key) when byte_size(key) == 16, do: State.initialize(key)
+  def init(_), do: raise @kerr
 
 end

@@ -15,7 +15,7 @@ NIF(format){
 
 static ErlNifFunc nif_funcs[] = {
   { "format", 2, format },
-  { "nif_loaded", 0, nif_loaded }
+  { "nif_loaded?", 0, nif_loaded }
 };
 
 ERL_NIF_INIT(Elixir.SipHash.Util,nif_funcs,NULL,NULL,upgrade,NULL)

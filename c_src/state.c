@@ -25,11 +25,7 @@ NIF(apply_block){
 
   enif_get_tuple(env, argv[0], &arity, &tuple);
 
-  unsigned long v0;
-  unsigned long v1;
-  unsigned long v2;
-  unsigned long v3;
-  unsigned long m;
+  unsigned long m, v0, v1, v2, v3;
 
   enif_get_ulong(env, tuple[0], &v0);
   enif_get_ulong(env, tuple[1], &v1);
@@ -62,10 +58,7 @@ NIF(finalize){
 
   enif_get_tuple(env, argv[0], &arity, &tuple);
 
-  unsigned long v0;
-  unsigned long v1;
-  unsigned long v2;
-  unsigned long v3;
+  unsigned long v0, v1, v2, v3;
 
   enif_get_ulong(env, tuple[0], &v0);
   enif_get_ulong(env, tuple[1], &v1);
@@ -87,7 +80,7 @@ NIF(finalize){
 static ErlNifFunc nif_funcs[] = {
   { "apply_internal_block", 3, apply_block },
   { "finalize", 2, finalize },
-  { "nif_loaded", 0, nif_loaded }
+  { "nif_loaded?", 0, nif_loaded }
 };
 
 ERL_NIF_INIT(Elixir.SipHash.State,nif_funcs,NULL,NULL,upgrade,NULL)

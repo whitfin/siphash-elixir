@@ -64,30 +64,12 @@ defmodule SipHash.Util do
   end
 
   @doc """
-  Chunks a binary input into groups of N, where N is passed in. If a group does
-  not have enough chars to be chunked again, it will be added to the list as is.
-
-  ## Examples
-
-      iex> SipHash.Util.chunk_string("12345678", 4)
-      ["1234","5678"]
-
-  """
-  @spec chunk_string(binary, number) :: list
-  def chunk_string(str, n) when byte_size(str) >= n do
-    { chunk, rest } = :erlang.split_binary(str, n)
-    [chunk|chunk_string(rest, n)]
-  end
-  def chunk_string(<<>>, _), do: []
-  def chunk_string(str, _), do: [str]
-
-  @doc """
   Formats a resulting hash into a chosen format. Arguments are provided by the
-  options passed in by the user when `SipHash.hash/3` is called. The `/2` version
-  of this function is overridden by a NIF which uses `sprintf` to do the any
-  formatting. The Elixir implementation just pattern matches on the format chars
-  and provides an backup. The NIF implementation is roughly 1 microsecond quicker,
-  so it's worth the override.
+  options passed in by the user when `SipHash.hash/3` is called. The internal
+  version of this function is overridden by a NIF which uses `sprintf` to do the
+  any formatting. The Elixir implementation just pattern matches on the format
+  chars and provides an backup. The NIF implementation is roughly 1 microsecond
+  quicker, so it's worth the override.
 
   ## Examples
 
@@ -101,9 +83,11 @@ defmodule SipHash.Util do
       "09b57037cd3f8f0c"
 
   """
-  def format(s, false, _), do: s
-  def format(s, true, :upper), do: format(s, "%016lX")
-  def format(s, true, :lower), do: format(s, "%016lx")
+  @spec format(binary, true | false | binary, atom) :: binary
+  def format(input, false, _case), do: input
+  def format(input, true, :upper), do: format(input, "%016lX")
+  def format(input, true, :lower), do: format(input, "%016lx")
+  @doc false
   def format(num, "%016lX") do
     num
     |> to_hex
@@ -119,9 +103,19 @@ defmodule SipHash.Util do
   @doc """
   Used to quickly determine if NIFs have been loaded for this module. Returns
   `true` if it has, `false` if it hasn't.
+
+  ## Examples
+
+      iex> res = case System.get_env("UTIL_IMPL") do
+      ...>   "embedded" -> false
+      ...>   _other -> true
+      ...> end
+      iex> SipHash.Util.nif_loaded? == res
+      true
+
   """
-  @spec nif_loaded :: true | false
-  def nif_loaded, do: false
+  @spec nif_loaded? :: true | false
+  def nif_loaded?, do: false
 
   @doc """
   Pads a binary input with zeroes. If the provided input is not a binary, simply
@@ -137,8 +131,32 @@ defmodule SipHash.Util do
 
   """
   @spec pad_left(binary) :: binary
-  def pad_left(s) when not is_binary(s), do: s
-  def pad_left(s), do: String.rjust(s, 16, ?0)
+  def pad_left(input) when not is_binary(input), do: input
+  def pad_left(input), do: String.rjust(input, 16, ?0)
+
+  @doc """
+  Chunks a binary into groups of N, where N is a value passed in. If a group
+  does not have enough chars to be chunked into a group of N, it is added as is.
+  A function is provided to process binaries in a single pass, to avoid iterating
+  the bytes twice (as was the case in previous versions).
+
+  ## Examples
+
+      iex> SipHash.Util.process_by_chunk("12345678", 4, {}, &(Tuple.append/2))
+      {"1234", "5678", ""}
+
+      iex> SipHash.Util.process_by_chunk(12345678, 4, {}, &(Tuple.append/2))
+      ** (FunctionClauseError) no function clause matching in SipHash.Util.process_by_chunk/4
+
+  """
+  # @spec process_by_chunk(binary, number, any, (any, binary -> any)) :: any
+  def process_by_chunk(input, size, state, fun) when byte_size(input) >= size do
+    { chunk, rest } = :erlang.split_binary(input, size)
+    process_by_chunk(rest, size, fun.(state, chunk), fun)
+  end
+  def process_by_chunk(input, _size, state, fun) when is_binary(input) do
+    fun.(state, input)
+  end
 
   @doc """
   Converts a binary input to the provided case. If the provided input is not a
@@ -157,9 +175,9 @@ defmodule SipHash.Util do
 
   """
   @spec to_case(binary, atom) :: binary
-  def to_case(s, _) when not is_binary(s), do: s
-  def to_case(s, :upper), do: String.upcase(s)
-  def to_case(s, :lower), do: String.downcase(s)
+  def to_case(input, _case) when not is_binary(input), do: input
+  def to_case(input, :upper), do: String.upcase(input)
+  def to_case(input, :lower), do: String.downcase(input)
 
   @doc """
   Converts a number input to a base-16 output (as a string). If the first arg
@@ -175,7 +193,7 @@ defmodule SipHash.Util do
 
   """
   @spec to_hex(number) :: binary
-  def to_hex(n) when not is_number(n), do: n
-  def to_hex(n), do: :erlang.integer_to_binary(n, 16)
+  def to_hex(num) when not is_number(num), do: num
+  def to_hex(num), do: :erlang.integer_to_binary(num, 16)
 
 end
