@@ -1,11 +1,9 @@
 defmodule SipHash.State do
+  @moduledoc false
+  # Module for representing state and state transformations of a digest
+  # whilst moving through the hasing pipeline. Note that we use tuples
+  # rather than structs due to a ~5 µs/op speedup.
   use Bitwise
-  @moduledoc """
-  Module for representing state and state transformations of a digest
-  whilst moving through the hasing pipeline. Note that we use tuples
-  rather than structs due to a ~5 µs/op speedup. This module makes use
-  of NIFs to improve performance.
-  """
 
   # alias SipHash.Util for fast use
   alias SipHash.Util, as: Util
@@ -19,39 +17,22 @@ defmodule SipHash.State do
   @initial_v2 0x6c7967656e657261
   @initial_v3 0x7465646279746573
 
-  # define native implementation
-  @native_impl [".", "_native", "state"] |> Path.join |> Path.expand
-
-  # setup init load
-  @on_load :init
-
-  @doc """
-  Loads any NIFs needed for this module. Because we have a valid fallback
-  implementation, we don't have to exit on failure.
-  """
-  def init do
-    case System.get_env("STATE_IMPL") do
-      "embedded" -> :ok;
-      _other -> :erlang.load_nif(@native_impl, 0)
-    end
-  end
-
   @doc """
   Applies a block (an 8-byte chunk) to the digest, and returns the state after
-  transformation. A binary chunk is passed in, and then it is converted to a
-  number (as little endian) before being passed to the internal function
-  `SipHash.State.apply_internal_block/3`.
+  transformation.
+
+  If a binary chunk is passed in, it is converted to a number
+  (as little endian) before being applied to the digest. First we XOR v3 before
+  running through compression using `c` rounds of compression. Then we XOR v0
+  and return the state.
   """
   @spec apply_block(s, binary, number) :: s
   def apply_block({ _v0, _v1, _v2, _v3 } = state, m, c)
   when is_binary(m) and is_number(c) do
-    apply_internal_block(state, Util.bytes_to_long(m), c)
+    apply_block(state, Util.bytes_to_long(m), c)
   end
-
-  # Applies a block to the digest, and returns the state after transformation.
-  # First we XOR v3 before compressing the state twice. Once it's complete, we
-  # then XOR v0, and return the final state.
-  defp apply_internal_block({ v0, v1, v2, v3 }, m, c) do
+  def apply_block({ v0, v1, v2, v3 } = _state, m, c)
+  when is_number(m) and is_number(c) do
     state = { v0, v1, v2, v3 ^^^ m }
 
     { v0, v1, v2, v3 } =
@@ -62,17 +43,19 @@ defmodule SipHash.State do
   end
 
   @doc """
-  Applies a last-block transformation to the digest. This block may be less than
-  8-bytes, and if so we pad it left with zeroed bytes (up to 7 bytes). We then
-  add the length of the input as a byte and update using the block as normal.
+  Applies a last-block transformation to the digest.
+
+  This block may be less than 8-bytes, and if so we pad it with zeroed bytes
+  (up to 7 bytes). We then add the length of the input as a byte and update
+  using the block as normal.
   """
   @spec apply_last_block({ number, s, number } | s, number, number) :: s
-  def apply_last_block({ m, state, chunk_length }, len, c) do
+  def apply_last_block({ m, state, chunk_length } = _state, length, c) do
     last_block = case chunk_length do
       7 -> m
       l -> m <> :binary.copy(<<0>>, 7 - l)
     end
-    apply_block(state, (last_block <> <<len>>), c)
+    apply_block(state, (last_block <> <<length>>), c)
   end
 
   @doc """
@@ -80,8 +63,8 @@ defmodule SipHash.State do
   modify the c-d values of the SipHash algorithm.
   """
   @spec compress(s, number) :: s
-  def compress({ _v0, _v1, _v2, _v3 } = state, iter) when iter > 0 do
-    state |> compress |> compress(iter - 1)
+  def compress({ _v0, _v1, _v2, _v3 } = state, iteration) when iteration > 0 do
+    state |> compress |> compress(iteration - 1)
   end
   def compress({ _v0, _v1, _v2, _v3 } = state, 0), do: state
 
@@ -92,10 +75,6 @@ defmodule SipHash.State do
 
   Incidentally, this function is named `SipHash.State.compress/1` rather than
   `SipHash.State.round/1` to avoid clashing with `Kernel.round/1` internally.
-
-  As of v2.0.0, this function is overridden with a native implementation when
-  available in order to speed up the translations. This results in a ~10 µs/op
-  speed decrease, and so this should be treated as a fallback state only.
   """
   @spec compress(s) :: s
   def compress({ v0, v1, v2, v3 } = _state) do
@@ -137,13 +116,15 @@ defmodule SipHash.State do
 
   @doc """
   Initializes a state based on an input key, using the technique defined in
-  the SipHash specifications. First we take the input key, split it in two,
-  and convert to the little endian version of the bytes. We then create a struct
-  using the magic numbers and XOR them against the two key words created.
+  the SipHash specifications.
+
+  First we take the input key, split it in two, and convert to the little endian
+  version of the bytes. We then create a struct using the magic numbers and XOR
+  them against the two key words created.
 
   ## Examples
 
-      iex> SipHash.init("0123456789ABCDEF")
+      iex> SipHash.State.initialize("0123456789ABCDEF")
       {4925064773550298181, 2461839666708829781, 6579568090023412561,
        3611922228250500171}
 
@@ -164,26 +145,10 @@ defmodule SipHash.State do
   end
 
   @doc """
-  Used to quickly determine if NIFs have been loaded for this module. Returns
-  `true` if it has, `false` if it hasn't.
+  Rotates an input number `val` left by `shift` number of bits.
 
-  ## Examples
-
-      iex> res = case System.get_env("STATE_IMPL") do
-      ...>   "embedded" -> false
-      ...>   _other -> true
-      ...> end
-      iex> SipHash.State.nif_loaded? == res
-      true
-
-  """
-  @spec nif_loaded? :: true | false
-  def nif_loaded?, do: false
-
-  @doc """
-  Rotates an input number `val` left by `shift` number of bits. Bits which are
-  pushed off to the left are rotated back onto the right, making this a left
-  rotation (a circular shift).
+  Bits which are pushed off to the left are rotated back onto the right, making
+  this a left rotation (a circular shift).
 
   ## Examples
 
@@ -195,8 +160,8 @@ defmodule SipHash.State do
 
   """
   @spec rotate_left(number, number) :: number
-  def rotate_left(val, shift) when is_number(val) and is_number(shift) do
-    Util.apply_mask64(val <<< shift) ||| (val >>> (64 - shift))
+  def rotate_left(value, shift) when is_number(value) and is_number(shift) do
+    Util.apply_mask64(value <<< shift) ||| (value >>> (64 - shift))
   end
 
 end

@@ -1,28 +1,10 @@
 defmodule SipHash.Util do
+  @moduledoc false
+  # Utility module for minor masking and binary conversions.
   use Bitwise
-  @moduledoc """
-  Utility module for minor masking and binary conversions.
-  """
 
   # a mask for forcing to 64 bits
   @mask_64 0xFFFFFFFFFFFFFFFF
-
-  # define native implementation
-  @native_impl [".", "_native", "util"] |> Path.join |> Path.expand
-
-  # setup init load
-  @on_load :init
-
-  @doc """
-  Loads any NIFs needed for this module. Because we have a valid fallback
-  implementation, we don't have to exit on failure.
-  """
-  def init do
-    case System.get_env("UTIL_IMPL") do
-      "embedded" -> :ok;
-      _other -> :erlang.load_nif(@native_impl, 0)
-    end
-  end
 
   @doc """
   Applies a 64 bit mask to the passed in number to force it to use only 64 bits.
@@ -73,49 +55,29 @@ defmodule SipHash.Util do
 
   ## Examples
 
-      iex> SipHash.Util.format(699588702094987020, false, :upper)
+      iex> SipHash.Util.format(699588702094987020, false)
       699588702094987020
 
-      iex> SipHash.Util.format(699588702094987020, true, :upper)
+      iex> SipHash.Util.format(699588702094987020, "%016lX")
       "09B57037CD3F8F0C"
 
-      iex> SipHash.Util.format(699588702094987020, true, :lower)
+      iex> SipHash.Util.format(699588702094987020, "%016lx")
       "09b57037cd3f8f0c"
 
   """
-  @spec format(binary, true | false | binary, atom) :: binary
-  def format(input, false, _case), do: input
-  def format(input, true, :upper), do: format(input, "%016lX")
-  def format(input, true, :lower), do: format(input, "%016lx")
-  @doc false
-  def format(num, "%016lX") do
+  @spec format(binary, false | binary) :: binary
+  def format(num, false = _formatter), do: num
+  def format(num, "%016lX" = _formatter) do
     num
     |> to_hex
     |> pad_left
   end
-  def format(num, "%016lx") do
+  def format(num, "%016lx" = _formatter) do
     num
     |> to_hex
     |> to_case(:lower)
     |> pad_left
   end
-
-  @doc """
-  Used to quickly determine if NIFs have been loaded for this module. Returns
-  `true` if it has, `false` if it hasn't.
-
-  ## Examples
-
-      iex> res = case System.get_env("UTIL_IMPL") do
-      ...>   "embedded" -> false
-      ...>   _other -> true
-      ...> end
-      iex> SipHash.Util.nif_loaded? == res
-      true
-
-  """
-  @spec nif_loaded? :: true | false
-  def nif_loaded?, do: false
 
   @doc """
   Pads a binary input with zeroes. If the provided input is not a binary, simply
@@ -176,12 +138,12 @@ defmodule SipHash.Util do
   """
   @spec to_case(binary, atom) :: binary
   def to_case(input, _case) when not is_binary(input), do: input
-  def to_case(input, :upper), do: String.upcase(input)
-  def to_case(input, :lower), do: String.downcase(input)
+  def to_case(input, :upper = _case), do: String.upcase(input)
+  def to_case(input, :lower = _case), do: String.downcase(input)
 
   @doc """
   Converts a number input to a base-16 output (as a string). If the first arg
-  is not a number, simple return the first argument as is.
+  is not a number, simply returns the first argument as is.
 
   ## Examples
 

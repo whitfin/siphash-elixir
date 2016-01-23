@@ -65,12 +65,12 @@ defmodule SipHash.Mixfile do
   defp deps do
     [
       # documentation
-      { :earmark, "~> 0.1",  optional: true, only: :docs },
-      { :ex_doc,  "~> 0.11", optional: true, only: :docs },
+      { :earmark, "~> 0.2.1",  optional: true, only: :docs },
+      { :ex_doc,  "~> 0.11.3", optional: true, only: :docs },
       # testing
-      { :benchfella,  "~> 0.3.0", optional: true, only: :test },
+      { :benchfella,  "~> 0.3.1", optional: true, only: :test },
       { :benchwarmer, "~> 0.0.2", optional: true, only: :test },
-      { :excoveralls, "~> 0.4",   optional: true, only: :test },
+      { :excoveralls, "~> 0.4.5", optional: true, only: :test },
       { :exprof,      "~> 0.2.0", optional: true, only: :test }
     ]
   end

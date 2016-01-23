@@ -1,98 +1,88 @@
 defmodule SipHash do
-  use Bitwise
   @moduledoc """
   Module for hashing values using the SipHash hash family.
 
-  This module makes use of NIFs for better performance and throughput, but this
-  can be disabled by setting the `HASH_IMPL` environment variable to `embedded`.
-  This is controlled via the environment rather than a specific function arg as
-  the NIFs are automatically loaded during the start of the application. Please
-  note that the use of NIFs brings a significant performance improvement, and so
-  you should only disable them with good reason.
+  The `SipHash.hash/3` function allows for flags specifying things such as the
+  number of rounds of compression, allowing use of SipHash-C-D, where `C` and `D`
+  are customizable. Values can be converted to hexidecimal strings as required,
+  but by default this module deals with numbers (as that's the optimal way to
+  work with these hashes).
 
-  Due to the use of NIFs, please only use the public `SipHash` functions. Do not
-  rely on the behaviour of any submodules, as incorrect use of native functions
-  can result in crashes in your application.
+  _**Note**:  This module makes use of NIFs for better performance and throughput,
+  but this can be disabled by setting the `SIPHASH_IMPL` environment variable
+  to the value "embedded". Please note that the use of NIFs brings a significant
+  performance improvement, and so you should only disable them with good reason._
   """
+  use Bitwise
 
-  # alias both SipHash.State/Util
-  alias SipHash.State, as: State
-  alias SipHash.Util, as: Util
+  # alias SipHash.Internals
+  alias SipHash.Internals, as: Internals
 
   # store key error message
   @kerr "Key must be exactly 16 bytes!"
 
-  # define types
-  @type s :: { number, number, number, number }
+  # store input error message
+  @ierr "Hash input must be a binary!"
+
+  # passes error message
+  @perr "Passes C and D must be valid numbers greater than 0!"
 
   @doc """
   Based on the algorithm as described in https://131002.net/siphash/siphash.pdf,
   and therefore requires a key alongside the input to use as a seed. This key
-  should consist of 16 bytes, and is measured by `Kernel.byte_size/1`. An error
-  will be raised if this is not the case. The default implementation is a 2-4
+  should consist of 16 bytes, and is measured by `byte_size/1`. An error
+  will be returned if this is not the case. The default implementation is a 2-4
   hash, but this can be controlled through the options provided.
 
-  In the interest of performance; if you're repeatedly using the same key it's
-  possible to create an initial state from your key once, thus avoiding wasted
-  key calculations. This can be created by calling `SipHash.init/1` with your
-  key. The returned state can be provided instead of a key when hashing; this
-  shaves roughly ~0.5 µs/op, so it's recommended to use this method when possible.
-
-  Your input *must* be a binary. It's possible to add a catch-all to `SipHash.hash/3`
-  which simply wraps the input in `Kernel.inspect/2`, but such usage is not
-  encouraged. It's better to be more explicit about what is being hashed, and
-  `Kernel.inspect/2` does not always perform the fastest available conversion
-  (for example, using Poison to encode Maps is far faster, whilst also being more
-  reliable). In addition, the output of `Kernel.inspect/2` is specific to Elixir,
-  making it annoyingly unportable.
-
-  By default, all values are returned as numbers (i.e. the result of the hash),
-  but you can set `:hex` to true as an option to get a hex string output. The
-  reason for this is that converting to hex takes an extra couple of µs, and the
-  default is intended to be the optimal use case. Please note that any of the
-  options related to hex string formatting will be ignored if `:hex` is not set
-  to true (e.g. `:case`).
+  This function returns output as a tuple with either format of `{ :ok, value }`
+  or `{ :error, message }`. By default, all values are returned as numbers
+  (i.e. the result of the hash), but you can set `:hex` to true as an option to
+  get a hex string output. The reason for this is that converting to hex typically
+  takes an extra couple of microseconds, and the default is intended to be the
+  optimal use case. lease note that any of the options related to hex string
+  formatting will be ignored if `:hex` is not set to true (e.g. `:case`).
 
   ## Options
 
-    * `:case` - either of `:upper` or `:lower`, defaults to using `:upper`
-    * `:c` and `:d` - the number of compression rounds, default to `2` and `4`
-    * `:hex` - when `true` returns the output as a hex string, defaults to `false`
+    * `:case` - either of `:upper` or `:lower` (defaults to using `:upper`)
+    * `:c` and `:d` - the number of compression rounds (default to 2 and 4)
+    * `:hex` - when true returns the output as a hex string (defaults to false)
 
   ## Examples
 
       iex> SipHash.hash("0123456789ABCDEF", "hello")
-      4402678656023170274
-
-      iex> SipHash.init("0123456789ABCDEF") |> SipHash.hash("hello")
-      4402678656023170274
+      { :ok, 4402678656023170274 }
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", hex: true)
-      "3D1974E948748CE2"
+      { :ok, "3D1974E948748CE2" }
 
       iex> SipHash.hash("0123456789ABCDEF", "abcdefgh", hex: true)
-      "1AE57886F899E65F"
+      { :ok, "1AE57886F899E65F" }
 
       iex> SipHash.hash("0123456789ABCDEF", "my long strings", hex: true)
-      "1323400B0804036D"
+      { :ok, "1323400B0804036D" }
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", hex: true, case: :lower)
-      "3d1974e948748ce2"
+      { :ok, "3d1974e948748ce2" }
 
       iex> SipHash.hash("0123456789ABCDEF", "hello", c: 4, d: 8)
-      14986662229302055855
+      { :ok, 14986662229302055855 }
 
       iex> SipHash.hash("invalid_bytes", "hello")
-      ** (RuntimeError) Key must be exactly 16 bytes!
+      { :error, "Key must be exactly 16 bytes!" }
 
-      iex> SipHash.hash("FEDCBA9876543210", %{ "test" => "one" })
-      ** (FunctionClauseError) no function clause matching in SipHash.hash/3
+      iex> SipHash.hash("0123456789ABCDEF", "hello", c: 0, d: 0)
+      { :error, "Passes C and D must be valid numbers greater than 0!" }
+
+      iex> SipHash.hash("0123456789ABCDEF", %{ "test" => "one" })
+      { :error, "Hash input must be a binary!" }
 
   """
-  @spec hash(binary | s, binary, [ { atom, atom } ]) :: binary
-  def hash({ _v0, _v1, _v2, _v3 } = state, input, opts)
-  when is_binary(input) and is_list(opts) do
-    length = byte_size(input)
+  @spec hash(binary, binary, [ { atom, atom } ]) :: { atom, binary }
+  def hash(key, input, opts \\ [])
+  def hash(key, _input, _opts) when byte_size(key) != 16, do: { :error, @kerr }
+  def hash(_key, input, _opts) when not is_binary(input), do: { :error, @ierr }
+  def hash(key, input, opts) when is_binary(input) and is_list(opts) do
     s_case = :upper
     c_pass = 2
     d_pass = 4
@@ -105,42 +95,80 @@ defmodule SipHash do
       to_hex = Keyword.get(opts, :hex, to_hex)
     end
 
-    input
-    |> Util.process_by_chunk(8, state, fn(state, chunk) ->
-        case byte_size(chunk) do
-          8 -> State.apply_block(state, chunk, c_pass)
-          l -> State.apply_last_block({ chunk, state, l }, length, c_pass)
+    case valid_passes?(c_pass, d_pass) do
+      :error -> { :error, @perr }
+      :ok ->
+        result = case to_hex do
+          true ->
+            Internals.hash(key, input, c_pass, d_pass, case s_case do
+              :lower -> "%016lx"
+              _upper -> "%016lX"
+            end)
+          _false ->
+            Internals.hash(key, input, c_pass, d_pass)
         end
-       end)
-    |> State.finalize(d_pass)
-    |> Util.format(to_hex, s_case)
+
+        { :ok, result }
+    end
   end
-  def hash(key, input, opts) when byte_size(key) == 16 do
-    key
-    |> State.initialize
-    |> hash(input, opts)
-  end
-  def hash(key, _input, _opts) when is_binary(key), do: raise @kerr
-  def hash(key, input), do: hash(key, input, [])
 
   @doc """
-  Takes an initial seed key and creates a state with the initial values for
-  v0, v1, v2 and v3. This state can then be provided to `SipHash.hash/3` to
-  avoid repeatedly recalculating this step when using the same key for every
-  hash.
+  A functional equivalent of `SipHash.hash/3`, but rather than returning the
+  value inside a tuple the value is returned instead. Any errors will be raised
+  as exceptions. There are typically very few cases causing errors which aren't
+  due to programmer error, but caution is advised all the same.
 
   ## Examples
 
-      iex> SipHash.init("0123456789ABCDEF")
-      {4925064773550298181, 2461839666708829781, 6579568090023412561,
-       3611922228250500171}
+      iex> SipHash.hash!("0123456789ABCDEF", "hello")
+      4402678656023170274
 
-      iex> SipHash.init("invalid")
+      iex> SipHash.hash!("0123456789ABCDEF", "hello", hex: true)
+      "3D1974E948748CE2"
+
+      iex> SipHash.hash!("0123456789ABCDEF", "abcdefgh", hex: true)
+      "1AE57886F899E65F"
+
+      iex> SipHash.hash!("0123456789ABCDEF", "my long strings", hex: true)
+      "1323400B0804036D"
+
+      iex> SipHash.hash!("0123456789ABCDEF", "hello", hex: true, case: :lower)
+      "3d1974e948748ce2"
+
+      iex> SipHash.hash!("0123456789ABCDEF", "hello", c: 4, d: 8)
+      14986662229302055855
+
+      iex> SipHash.hash!("invalid_bytes", "hello")
       ** (RuntimeError) Key must be exactly 16 bytes!
 
+      iex> SipHash.hash!("0123456789ABCDEF", "hello", c: 0, d: 0)
+      ** (RuntimeError) Passes C and D must be valid numbers greater than 0!
+
+      iex> SipHash.hash!("0123456789ABCDEF", %{ "test" => "one" })
+      ** (RuntimeError) Hash input must be a binary!
+
   """
-  @spec init(binary) :: s
-  def init(key) when byte_size(key) == 16, do: State.initialize(key)
-  def init(_), do: raise @kerr
+  @spec hash!(binary, binary, [ { atom, atom } ]) :: binary
+  def hash!(key, input, opts \\ []) do
+    case hash(key, input, opts) do
+      { :ok, hash } -> hash
+      { :error, msg } -> raise msg
+    end
+  end
+
+  @doc """
+  Used to quickly determine if NIFs have been loaded for this module. Returns
+  true if it has, false if it hasn't. This will only return false if either the
+  `SIPHASH_IMPL` environment variable is set to "embedded", or there was an error
+  when compiling the C implementation.
+  """
+  @spec nif_loaded? :: true | false
+  defdelegate nif_loaded?, to: Internals
+
+  # Determines whether the `c` and `d` values are passed in are valid numbers
+  # and larger than 0 (it would make no sense to skip a compression). We return
+  # an `:ok` atom if validation passes, otherwise `:error`.
+  defp valid_passes?(c, d) when c > 0 and d > 0, do: :ok
+  defp valid_passes?(_c, _d), do: :error
 
 end

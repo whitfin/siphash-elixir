@@ -11,8 +11,7 @@ endif
 
 _native: clean
 	mkdir -p _native
-	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@/state.so c_src/state.c
-	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@/util.so c_src/util.c
+	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@/siphash.so c_src/siphash.c
 
 clean:
 	$(RM) -r _native/*
