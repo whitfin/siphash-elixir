@@ -139,20 +139,20 @@ defmodule SipHash do
       14986662229302055855
 
       iex> SipHash.hash!("invalid_bytes", "hello")
-      ** (RuntimeError) Key must be exactly 16 bytes!
+      ** (ArgumentError) Key must be exactly 16 bytes!
 
       iex> SipHash.hash!("0123456789ABCDEF", "hello", c: 0, d: 0)
-      ** (RuntimeError) Passes C and D must be valid numbers greater than 0!
+      ** (ArgumentError) Passes C and D must be valid numbers greater than 0!
 
       iex> SipHash.hash!("0123456789ABCDEF", %{ "test" => "one" })
-      ** (RuntimeError) Hash input must be a binary!
+      ** (ArgumentError) Hash input must be a binary!
 
   """
   @spec hash!(binary, binary, [ { atom, atom } ]) :: binary
   def hash!(key, input, opts \\ []) do
     case hash(key, input, opts) do
       { :ok, hash } -> hash
-      { :error, msg } -> raise msg
+      { :error, msg } -> raise ArgumentError, message: msg
     end
   end
 
