@@ -1,8 +1,10 @@
 language: elixir
 elixir:
   - 1.2.1
+  - 1.1.1
 otp_release:
   - 18.2
+  - 18.1
 script:
   - SIPHASH_IMPL=native mix test --trace
   - SIPHASH_IMPL=embedded mix test --trace

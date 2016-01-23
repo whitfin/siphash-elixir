@@ -10,7 +10,7 @@ This package can be installed via Hex:
   1. Add siphash to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:siphash, "~> 2.1.0"}]
+          [{:siphash, "~> 3.0.0"}]
         end
 
   2. Ensure siphash is started before your application:
@@ -25,20 +25,38 @@ It's straightforward to get going, you just supply your key and input to `SipHas
 
 ```elixir
 iex(1)> SipHash.hash("0123456789ABCDEF", "Hello, World!")
+{ :ok, 16916637876837948234 }
+iex(2)> SipHash.hash!("0123456789ABCDEF", "Hello, World!") # default in v2.x
 16916637876837948234
-iex(2)> SipHash.hash("0123456789ABCDEF", "Hello, World!", hex: true) # default in v1.x
+iex(2)> SipHash.hash!("0123456789ABCDEF", "Hello, World!", hex: true) # default in v1.x
 "EAC3F88552D81B4A"
 ```
 
 For further examples, as well as different flags to customize output, please see the [documentation](http://hexdocs.pm/siphash/SipHash.html).
 
-## Migration to v2.1.x
+## Migration to v3.x
 
-The move to v2.1.x comes with even further performance gains, roughly 3x the speed of v2.0.x. There are a few notable changes in this version bump which make it necessary to document;
+With v3.x come huge performance gains over all prior versions, roughly 200x the speed of the initial implementations. This is due to a smarter NIF binding, so it's recommended to use the NIF whenever possible.
 
-Previously, NIFs were disabled by setting `HASH_IMPL` to `embedded` in your environment. As of v2.1.x, there are two places native implementations are used, and so they have to be disabled separately via the `STATE_IMPL` and `UTIL_IMPL` environment variables. Setting them to `embedded` will force them to use an internal Elixir implementation (which will very likely be slower). Both can be disabled independently of each other.
+It was previously possible to disable different types of NIF using both the `HASH_IMPL` and `STATE_IMPL` environment variables. The new implementation uses a single NIF, and can only be disabled by setting `SIPHASH_IMPL` to `embedded`. This will fall back to using an Elixir implementation. This version is somewhat slower, but it comes with less risk attached (although the NIF is pretty bulletproof when used correctly).
 
-Please also note that as of v2.1.x, the `:padding` key does not change any behaviour. In prior versions it was possible to **not** left-pad your hashes with 0s (in Hex). This has been removed because it make a lot of things a pain, and it's arguably an unneeded use case anyway. As such, all hashes will be left-padded to 16 bytes as required (by default, and unnegotiable).
+In addition, the typical Elixir standard of `{ :ok, result }` and `{ :error, message }` has been adopted as of v3.0.0. As such, all hashes are returned in a tuple signifying whether the hash was a success or not. Below is an example of both cases:
+
+```elixir
+iex(1)> SipHash.hash("0123456789ABCDEF", "Hello, World!")
+{ :ok, 16916637876837948234 }
+iex(2)> SipHash.hash("invalid_bytes", "Hello, World!")
+{ :error, "Key must be exactly 16 bytes!" }
+```
+
+Because all potential errors are pretty much down to programmer error, you should be safe to use the alternate `SipHash.hash!/3` implementation which returns the straight result (or raises the appropriate error). This is the same behavior as that of `< v3.0.0`.
+
+```elixir
+iex(1)> SipHash.hash!("0123456789ABCDEF", "Hello, World!")
+16916637876837948234
+iex(2)> SipHash.hash!("invalid_bytes", "Hello, World!")
+** (ArgumentError) Key must be exactly 16 bytes!
+```
 
 ## Issues/Contributions
 
@@ -47,6 +65,7 @@ If you spot any issues with the implementation, please file an [issue](http://gi
 Make sure to test your changes though!
 
 ```bash
-$ mix test --trace  # test successes/failures
-$ mix coveralls     # code coverage, try keep 100% please!
+$ SIPHASH_IMPL=native mix test --trace    # test NIF  successes/failures
+$ SIPHASH_IMPL=embedded mix test --trace  # test Elixir successes/failures
+$ SIPHASH_IMPL=embedded mix coveralls     # code coverage, try keep 100% please!
 ```

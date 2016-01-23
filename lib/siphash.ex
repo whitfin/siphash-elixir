@@ -1,6 +1,7 @@
 defmodule SipHash do
   @moduledoc """
-  Module for hashing values using the SipHash hash family.
+  This module provides a simple but performant interface for hashing values using
+  the SipHash hash family.
 
   The `SipHash.hash/3` function allows for flags specifying things such as the
   number of rounds of compression, allowing use of SipHash-C-D, where `C` and `D`
