@@ -10,9 +10,6 @@ defmodule SipHash.Internals do
   alias SipHash.State, as: State
   alias SipHash.Util, as: Util
 
-  # define native implementation
-  @native_impl [".", "_native", "siphash"] |> Path.join |> Path.expand
-
   # setup init load
   @on_load :init
 
@@ -21,8 +18,13 @@ defmodule SipHash.Internals do
   # implementation, we don't have to exit on failure.
   def init do
     case System.get_env("SIPHASH_IMPL") do
-      "embedded" -> :ok;
-      _native -> :erlang.load_nif(@native_impl, 0)
+      "embedded" ->
+        :ok
+      _native ->
+        :siphash
+        |> :code.priv_dir
+        |> :filename.join('siphash')
+        |> :erlang.load_nif(0)
     end
   end
 
