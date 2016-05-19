@@ -10,7 +10,7 @@ This package can be installed via Hex:
   1. Add siphash to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:siphash, "~> 3.0.0"}]
+          [{:siphash, "~> 3.0.1"}]
         end
 
   2. Ensure siphash is started before your application:
