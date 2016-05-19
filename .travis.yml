@@ -1,12 +1,16 @@
 language: elixir
 elixir:
-  - 1.2.1
-  - 1.1.1
+  - 1.2.5
 otp_release:
+  - 18.3
   - 18.2
   - 18.1
+  - 18.0
 script:
   - SIPHASH_IMPL=native mix test --trace
   - SIPHASH_IMPL=embedded mix test --trace
 after_success:
-  - SIPHASH_IMPL=embedded MIX_ENV=test mix coveralls.travis
+  - SIPHASH_IMPL=embedded mix coveralls.travis
+branches:
+  only:
+    - master

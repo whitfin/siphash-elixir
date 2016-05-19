@@ -41,7 +41,9 @@ defmodule SipHash.Mixfile do
         tool: ExCoveralls
       ],
       preferred_cli_env: [
-        coveralls: :test
+        "coveralls": :test,
+        "coveralls.html": :test,
+        "coveralls.travis": :test
       ]
     ]
   end
@@ -66,26 +68,20 @@ defmodule SipHash.Mixfile do
     [
       # documentation
       { :earmark, "~> 0.2.1",  optional: true, only: :docs },
-      { :ex_doc,  "~> 0.11.3", optional: true, only: :docs },
+      { :ex_doc,  "~> 0.11.5", optional: true, only: :docs },
       # testing
-      { :benchfella,  "~> 0.3.1", optional: true, only: :test },
+      { :benchfella,  "~> 0.3.2", optional: true, only: :test },
       { :benchwarmer, "~> 0.0.2", optional: true, only: :test },
-      { :excoveralls, "~> 0.4.5", optional: true, only: :test },
+      { :excoveralls, "~> 0.5.4", optional: true, only: :test },
       { :exprof,      "~> 0.2.0", optional: true, only: :test }
     ]
   end
 end
 
-# Custom clean for C source
-defmodule Mix.Tasks.Clean.Make do
-  def run(_) do
-    { _result, 0 } = System.cmd("make", ["clean"], stderr_to_stdout: true)
-  end
-end
-
-# Custom compile for C source
 defmodule Mix.Tasks.Compile.Make do
   def run(_) do
-    { _result, 0 } = System.cmd("make", [], stderr_to_stdout: true)
+    { _result, 0 } = System.cmd("make", ["priv/siphash.so"], stderr_to_stdout: true)
+    Mix.Project.build_structure()
+    :ok
   end
 end
