@@ -10,7 +10,7 @@ This package can be installed via Hex:
   1. Add siphash to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:siphash, "~> 3.0.1"}]
+          [{:siphash, "~> 3.1.0"}]
         end
 
   2. Ensure siphash is started before your application:
@@ -43,7 +43,7 @@ config :siphash,
   disable_nifs: true
 ```
 
-This is just generally a better way to control this, rather than tainting the execution environment. In order to preserve backwards compatibility for the time being, the default value for `disable_nifs` will just be `System.get_env("SIPHASH_IMPL") == "embedded"` - however in future this will be removed and modified to simply be `false`. This will likely happen if/when a v3.2.x comes alone.
+This is just generally a better way to control this, rather than tainting the execution environment. In order to preserve backwards compatibility for the time being, the default value for `disable_nifs` will just be `System.get_env("SIPHASH_IMPL") == "embedded"`. In future this will be removed and modified to simply be `false`; this will likely happen if/when a v3.2.x comes alone.
 
 ## Migration to v3.x
 
