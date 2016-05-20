@@ -17,7 +17,7 @@ defmodule SipHash do
   use Bitwise
 
   # alias SipHash.Internals
-  alias SipHash.Internals, as: Internals
+  alias SipHash.Internals
 
   # store key error message
   @kerr "Key must be exactly 16 bytes!"

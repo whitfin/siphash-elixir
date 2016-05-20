@@ -34,6 +34,17 @@ iex(2)> SipHash.hash!("0123456789ABCDEF", "Hello, World!", hex: true) # default 
 
 For further examples, as well as different flags to customize output, please see the [documentation](http://hexdocs.pm/siphash/SipHash.html).
 
+## Migration to v3.1.x
+
+The only change with v3.1.x is a deprecation label on using the `SIPHASH_IMPL` environment variable to control whether a NIF is loaded or not. In future, you should control it via the application configuration as follows:
+
+```elixir
+config :siphash,
+  disable_nifs: true
+```
+
+This is just generally a better way to control this, rather than tainting the execution environment. In order to preserve backwards compatibility for the time being, the default value for `disable_nifs` will just be `System.get_env("SIPHASH_IMPL") == "embedded"` - however in future this will be removed and modified to simply be `false`. This will likely happen if/when a v3.2.x comes alone.
+
 ## Migration to v3.x
 
 With v3.x come huge performance gains over all prior versions, roughly 200x the speed of the initial implementations. This is due to a smarter NIF binding, so it's recommended to use the NIF whenever possible.

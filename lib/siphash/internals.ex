@@ -17,14 +17,13 @@ defmodule SipHash.Internals do
   # Loads any NIFs needed for this module. Because we have a valid fallback
   # implementation, we don't have to exit on failure.
   def init do
-    case System.get_env("SIPHASH_IMPL") do
-      "embedded" ->
-        :ok
-      _native ->
-        :siphash
-        |> :code.priv_dir
-        |> :filename.join('siphash')
-        |> :erlang.load_nif(0)
+    if Application.get_env(:siphash, :disable_nifs) do
+      :ok
+    else
+      :siphash
+      |> :code.priv_dir
+      |> :filename.join('siphash')
+      |> :erlang.load_nif(0)
     end
   end
 
@@ -58,11 +57,7 @@ defmodule SipHash.Internals do
 
   ## Examples
 
-      iex> res = case System.get_env("SIPHASH_IMPL") do
-      ...>   "embedded" -> false
-      ...>   _other -> true
-      ...> end
-      iex> SipHash.Internals.nif_loaded? == res
+      iex> SipHash.Internals.nif_loaded? == !Application.get_env(:siphash, :disable_nifs)
       true
 
   """
