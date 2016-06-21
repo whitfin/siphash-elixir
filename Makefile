@@ -16,9 +16,8 @@ siphash:
 	$(MIX) compile
 
 priv/siphash.so: c_src/siphash.c
-	mkdir priv
+	mkdir -p priv
 	$(CC) -w $(CFLAGS) -shared $(LDFLAGS) -o $@ c_src/siphash.c
 
 clean:
-	$(MIX) clean
 	$(RM) priv/siphash.so

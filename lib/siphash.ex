@@ -84,29 +84,26 @@ defmodule SipHash do
   def hash(key, _input, _opts) when byte_size(key) != 16, do: { :error, @kerr }
   def hash(_key, input, _opts) when not is_binary(input), do: { :error, @ierr }
   def hash(key, input, opts) when is_binary(input) and is_list(opts) do
-    s_case = :upper
-    c_pass = 2
-    d_pass = 4
-    to_hex = false
-
-    unless Enum.empty?(opts) do
-      s_case = Keyword.get(opts, :case, s_case)
-      c_pass = Keyword.get(opts, :c, c_pass)
-      d_pass = Keyword.get(opts, :d, d_pass)
-      to_hex = Keyword.get(opts, :hex, to_hex)
-    end
+    c_pass = Keyword.get(opts, :c, 2)
+    d_pass = Keyword.get(opts, :d, 4)
 
     case valid_passes?(c_pass, d_pass) do
-      :error -> { :error, @perr }
+      :error ->
+        { :error, @perr }
       :ok ->
-        result = case to_hex do
-          true ->
-            Internals.hash(key, input, c_pass, d_pass, case s_case do
-              :lower -> "%016lx"
-              _upper -> "%016lX"
-            end)
-          _false ->
-            Internals.hash(key, input, c_pass, d_pass)
+        format = if Keyword.get(opts, :hex) do
+          case Keyword.get(opts, :case, :upper) do
+            :lower -> "%016lx"
+            _upper -> "%016lX"
+          end
+        else
+          false
+        end
+
+        result = if format do
+          Internals.hash(key, input, c_pass, d_pass, format)
+        else
+          Internals.hash(key, input, c_pass, d_pass)
         end
 
         { :ok, result }
