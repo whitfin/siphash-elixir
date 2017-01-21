@@ -31,7 +31,7 @@ defmodule SipHash.Mixfile do
       aliases: [
         clean: [ "clean", "clean.make" ]
       ],
-      deps: deps,
+      deps: deps(),
       docs: [
         extras: [ "README.md" ],
         source_ref: "master",
@@ -67,12 +67,12 @@ defmodule SipHash.Mixfile do
   defp deps do
     [
       # development dependencies
-      { :benchfella,  "~> 0.3.2", optional: true, only: [ :dev, :test ] },
-      { :benchwarmer, "~> 0.0.2", optional: true, only: [ :dev, :test ] },
-      { :earmark, "~> 0.2.1",  optional: true, only: [ :dev, :test ]},
-      { :ex_doc,  "~> 0.12.0", optional: true, only: [ :dev, :test ] },
-      { :excoveralls, "~> 0.5.4", optional: true, only: [ :dev, :test ] },
-      { :exprof,      "~> 0.2.0", optional: true, only: [ :dev, :test ] }
+      { :benchfella,  "~> 0.3",  optional: true, only: [ :dev, :test ] },
+      { :benchwarmer, "~> 0.0",  optional: true, only: [ :dev, :test ] },
+      { :earmark,     "~> 1.0",  optional: true, only: [ :dev, :test ]},
+      { :ex_doc,      "~> 0.14", optional: true, only: [ :dev, :test ] },
+      { :excoveralls, "~> 0.6",  optional: true, only: [ :dev, :test ] },
+      { :exprof,      "~> 0.2",  optional: true, only: [ :dev, :test ] }
     ]
   end
 end
