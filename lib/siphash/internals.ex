@@ -11,6 +11,7 @@ defmodule SipHash.Internals do
   alias SipHash.Util, as: Util
 
   # setup init load
+  @compile :no_native
   @on_load :init
 
   @doc false
