@@ -2,7 +2,7 @@ defmodule SipHash.Mixfile do
   use Mix.Project
 
   @url_docs "http://hexdocs.pm/siphash"
-  @url_github "https://github.com/zackehh/siphash-elixir"
+  @url_github "https://github.com/whitfin/siphash-elixir"
 
   def project do
     [
@@ -41,6 +41,8 @@ defmodule SipHash.Mixfile do
         tool: ExCoveralls
       ],
       preferred_cli_env: [
+        "docs": :docs,
+        "bench": :test,
         "coveralls": :test,
         "coveralls.html": :test,
         "coveralls.travis": :test
@@ -68,11 +70,11 @@ defmodule SipHash.Mixfile do
     [
       # development dependencies
       { :benchfella,  "~> 0.3",  optional: true, only: [ :dev, :test ] },
-      { :benchwarmer, "~> 0.0",  optional: true, only: [ :dev, :test ] },
-      { :earmark,     "~> 1.0",  optional: true, only: [ :dev, :test ]},
-      { :ex_doc,      "~> 0.14", optional: true, only: [ :dev, :test ] },
-      { :excoveralls, "~> 0.6",  optional: true, only: [ :dev, :test ] },
-      { :exprof,      "~> 0.2",  optional: true, only: [ :dev, :test ] }
+      { :excoveralls, "~> 0.7",  optional: true, only: [ :dev, :test ] },
+      { :exprof,      "~> 0.2",  optional: true, only: [ :dev, :test ] },
+
+      # documentation dependencies
+      { :ex_doc, "~> 0.18", optional: true, only: [ :docs ] }
     ]
   end
 end
@@ -86,8 +88,10 @@ end
 
 defmodule Mix.Tasks.Compile.Make do
   def run(_) do
-    { _result, 0 } = System.cmd("make", ["priv/siphash.so"], stderr_to_stdout: true)
-    Mix.Project.build_structure()
+    if !Application.get_env(:siphash, :disable_nifs)  do
+      { _result, 0 } = System.cmd("make", ["priv/siphash.so"], stderr_to_stdout: true)
+      Mix.Project.build_structure()
+    end
     :ok
   end
 end

@@ -105,4 +105,4 @@ static ErlNifFunc nif_funcs[] = {
   { "nif_loaded?", 0, nif_loaded }
 };
 
-ERL_NIF_INIT(Elixir.SipHash.Internals,nif_funcs,NULL,NULL,upgrade,NULL)
+ERL_NIF_INIT(Elixir.SipHash.Digest,nif_funcs,NULL,NULL,upgrade,NULL)

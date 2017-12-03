@@ -15,9 +15,7 @@ defmodule SipHash do
   performance improvement, and so you should only disable them with good reason._
   """
   use Bitwise
-
-  # alias SipHash.Internals
-  alias SipHash.Internals
+  alias SipHash.Digest
 
   # store key error message
   @kerr "Key must be exactly 16 bytes!"
@@ -81,34 +79,34 @@ defmodule SipHash do
   """
   @spec hash(binary, binary, [ { atom, atom } ]) :: { atom, binary }
   def hash(key, input, opts \\ [])
-  def hash(key, _input, _opts) when byte_size(key) != 16, do: { :error, @kerr }
-  def hash(_key, input, _opts) when not is_binary(input), do: { :error, @ierr }
-  def hash(key, input, opts) when is_binary(input) and is_list(opts) do
+  def hash(key, input, opts)
+    when byte_size(key) == 16 and is_binary(input) and is_list(opts)
+  do
     c_pass = Keyword.get(opts, :c, 2)
     d_pass = Keyword.get(opts, :d, 4)
 
-    case valid_passes?(c_pass, d_pass) do
-      :error ->
+    case (c_pass > 0 and d_pass > 0) do
+      false ->
         { :error, @perr }
-      :ok ->
-        format = if Keyword.get(opts, :hex) do
-          case Keyword.get(opts, :case, :upper) do
-            :lower -> "%016lx"
-            _upper -> "%016lX"
-          end
-        else
-          false
-        end
+      true ->
+        case !!Keyword.get(opts, :hex) do
+          false ->
+            { :ok, Digest.hash(key, input, c_pass, d_pass) }
+          true ->
+            format =
+              case Keyword.get(opts, :case, :upper) do
+                :lower -> "%016lx"
+                _upper -> "%016lX"
+              end
 
-        result = if format do
-          Internals.hash(key, input, c_pass, d_pass, format)
-        else
-          Internals.hash(key, input, c_pass, d_pass)
+            { :ok, Digest.hash(key, input, c_pass, d_pass, format) }
         end
-
-        { :ok, result }
     end
   end
+  def hash(key, _input, _opts) when byte_size(key) != 16,
+    do: { :error, @kerr }
+  def hash(_key, input, _opts) when not is_binary(input),
+    do: { :error, @ierr }
 
   @doc """
   A functional equivalent of `SipHash.hash/3`, but rather than returning the
@@ -160,13 +158,6 @@ defmodule SipHash do
   `SIPHASH_IMPL` environment variable is set to "embedded", or there was an error
   when compiling the C implementation.
   """
-  @spec nif_loaded? :: true | false
-  defdelegate nif_loaded?, to: Internals
-
-  # Determines whether the `c` and `d` values are passed in are valid numbers
-  # and larger than 0 (it would make no sense to skip a compression). We return
-  # an `:ok` atom if validation passes, otherwise `:error`.
-  defp valid_passes?(c, d) when c > 0 and d > 0, do: :ok
-  defp valid_passes?(_c, _d), do: :error
-
+  @spec nif_loaded? :: boolean
+  defdelegate nif_loaded?, to: SipHash.Digest
 end

@@ -1,5 +1,5 @@
 # SipHash
-[![Build Status](https://travis-ci.org/zackehh/siphash-elixir.svg?branch=master)](https://travis-ci.org/zackehh/siphash-elixir) [![Coverage Status](https://coveralls.io/repos/zackehh/siphash-elixir/badge.svg?branch=master&service=github)](https://coveralls.io/github/zackehh/siphash-elixir?branch=master)
+[![Build Status](https://travis-ci.org/whitfin/siphash-elixir.svg?branch=master)](https://travis-ci.org/whitfin/siphash-elixir) [![Coverage Status](https://coveralls.io/repos/whitfin/siphash-elixir/badge.svg?branch=master&service=github)](https://coveralls.io/github/whitfin/siphash-elixir?branch=master)
 
 An Elixir implementation of the SipHash cryptographic hash family using native components for faster execution. Supports any variation, although defaults to the widely used SipHash-2-4. Previous versions focused on correctness, now there is a larger emphasis on performance optimizations as I intend to use it in a production environment (so naturally correctness will be upheld).
 
@@ -71,7 +71,7 @@ iex(2)> SipHash.hash!("invalid_bytes", "Hello, World!")
 
 ## Issues/Contributions
 
-If you spot any issues with the implementation, please file an [issue](http://github.com/zackehh/siphash-elixir/issues) or even a PR. The faster we can make it, the better!
+If you spot any issues with the implementation, please file an [issue](http://github.com/whitfin/siphash-elixir/issues) or even a PR. The faster we can make it, the better!
 
 Make sure to test your changes though!
 
