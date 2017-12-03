@@ -11,8 +11,6 @@ otp_release:
 branches:
   only:
   - master
-before_install:
-  - mix local.rebar --force
 script:
   - SIPHASH_IMPL=native mix test --trace
   - SIPHASH_IMPL=embedded mix test --trace
