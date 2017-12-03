@@ -26,7 +26,7 @@ defmodule SipHash.Mixfile do
         },
         maintainers: [ "Isaac Whitfield" ]
       },
-      version: "3.1.3",
+      version: "3.2.0",
       elixir: "~> 1.1",
       aliases: [
         clean: [ "clean", "clean.make" ]
