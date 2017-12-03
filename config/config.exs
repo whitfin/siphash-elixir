@@ -21,7 +21,7 @@ use Mix.Config
 #     config :logger, level: :info
 #
 config :siphash,
-  disable_nifs: true
+  disable_nifs: System.get_env("SIPHASH_IMPL") == "embedded"
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
