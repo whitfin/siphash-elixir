@@ -7,17 +7,21 @@ An Elixir implementation of the SipHash cryptographic hash family using native c
 
 This package can be installed via Hex:
 
-  1. Add siphash to your list of dependencies in `mix.exs`:
+1. Add siphash to your list of dependencies in `mix.exs`:
 
-        def deps do
-          [{:siphash, "~> 3.2"}]
-        end
+```elixir
+def deps do
+  [{:siphash, "~> 3.2"}]
+end
+```
 
-  2. Ensure siphash is started before your application:
+2. Ensure siphash is started before your application:
 
-        def application do
-          [applications: [:siphash]]
-        end
+```elixir
+def application do
+  [applications: [:siphash]]
+end
+```
 
 ## Quick Usage
 
