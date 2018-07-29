@@ -41,9 +41,9 @@ defmodule SipHash.Mixfile do
         tool: ExCoveralls
       ],
       preferred_cli_env: [
-        "docs": :docs,
-        "bench": :test,
-        "coveralls": :test,
+        docs: :docs,
+        bench: :test,
+        coveralls: :test,
         "coveralls.html": :test,
         "coveralls.travis": :test
       ]
