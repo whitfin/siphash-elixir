@@ -77,19 +77,33 @@ defmodule SipHash.Mixfile do
       { :ex_doc, "~> 0.18", optional: true, only: [ :docs ] }
     ]
   end
+
+  def find_make do
+    _make_cmd =
+      System.get_env("MAKE") ||
+        case :os.type() do
+          {:unix, :freebsd} -> "gmake"
+          {:unix, :openbsd} -> "gmake"
+          {:unix, :netbsd} -> "gmake"
+          {:unix, :dragonfly} -> "gmake"
+          _ -> "make"
+        end
+  end
 end
 
 defmodule Mix.Tasks.Clean.Make do
   def run(_) do
-    { _result, 0 } = System.cmd("make", ["clean"], stderr_to_stdout: true)
+    make_cmd = SipHash.Mixfile.find_make()
+    { _result, 0 } = System.cmd(make_cmd, ["clean"], stderr_to_stdout: true)
     :ok
   end
 end
 
 defmodule Mix.Tasks.Compile.Make do
   def run(_) do
+    make_cmd = SipHash.Mixfile.find_make()
     if !Application.get_env(:siphash, :disable_nifs)  do
-      { _result, 0 } = System.cmd("make", ["priv/siphash.so"], stderr_to_stdout: true)
+      { _result, 0 } = System.cmd(make_cmd, ["priv/siphash.so"], stderr_to_stdout: true)
       Mix.Project.build_structure()
     end
     :ok
